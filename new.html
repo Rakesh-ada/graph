@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive GHG Map with Charts</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        #info {
+           
+        }
+        #chart-container {
+    position: absolute;
+    bottom: 30px;
+    left: 50%; 
+    width: 90%; /* Adjusted width */
+    max-width: 1000px; /* Optional max width */
+    height: 250px;
+    transform: translateX(-50%);
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+
+        
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div>
+  <div id="info">
+    <div id="chart-container">
+        <canvas id="countryChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="geojson.js"></script>
+<script>
+    // Initialize the map
+    const map = L.map('map').setView([20, 0], 2);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+    }).addTo(map);
+
+    // Load GeoJSON data from the geojson.js file
+    L.geoJSON(geojsonData, {  // Assuming your geojson.js file exports a variable named `geojsonData`
+        onEachFeature: (feature, layer) => {
+            layer.on({
+                click: () => {
+                    // Get the country name (or other property)
+                    const countryName = feature.properties.name; // Adjust based on your GeoJSON structure
+                    
+                    // Fetch GHG data from your backend (replace with your API endpoint)
+                    fetch(`data.json`) // Replace with the correct backend API or file
+                        .then(response => response.json())
+                        .then(jsonData => {
+                            // Find the country data
+                            const countryData = jsonData.GHG_totals_by_country.find(c => c.Country === countryName);
+                            
+                            if (countryData) {
+                                // Extract years and values from countryData
+                                let years = [], values = [];
+                                for (let key in countryData) {
+                                    if (!isNaN(key)) {
+                                        years.push(key);
+                                        values.push(countryData[key]);
+                                    }
+                                }
+
+                                // Update chart data
+                                updateChart(countryName, years, values);
+                            } else {
+                                document.getElementById('info').innerHTML = `
+                                    <strong>${countryName}</strong><br>
+                                    No GHG data available for this country.`;
+                            }
+                        })
+                        .catch(error => {
+                            document.getElementById('info').innerHTML = `
+                                <strong>${countryName}</strong><br>
+                                Error fetching GHG data.`;
+                            console.error('Error fetching GHG data:', error);
+                        });
+                }
+            });
+        }
+    }).addTo(map);
+
+    
+    const globalGHGData = {
+    "Country": "GLOBAL TOTAL",
+    "1970": 24497.54442,
+    "1971": 24582.92091,
+    "1972": 25521.45404,
+    "1973": 26733.85934,
+    "1974": 26742.38412,
+    "1975": 26798.4541,
+    "1976": 27950.65593,
+    "1977": 28635.10984,
+    "1978": 29238.85235,
+    "1979": 29941.62626,
+    "1980": 29642.26003,
+    "1981": 29136.69345,
+    "1982": 28937.98432,
+    "1983": 29175.19007,
+    "1984": 29979.63329,
+    "1985": 30299.72311,
+    "1986": 30794.84987,
+    "1987": 31544.22126,
+    "1988": 32508.28813,
+    "1989": 33095.73799,
+    "1990": 33268.12071,
+    "1991": 33373.19073,
+    "1992": 33301.23401,
+    "1993": 33402.78703,
+    "1994": 33747.71846,
+    "1995": 34631.79795,
+    "1996": 35262.13061,
+    "1997": 35724.02634,
+    "1998": 35812.31496,
+    "1999": 36051.3277,
+    "2000": 36991.70704,
+    "2001": 37316.89534,
+    "2002": 37807.18338,
+    "2003": 39354.85102,
+    "2004": 40981.84826,
+    "2005": 42318.4285,
+    "2006": 43539.56655,
+    "2007": 44859.86746,
+    "2008": 45168.46503,
+    "2009": 44750.39493,
+    "2010": 46991.56672,
+    "2011": 48409.21681,
+    "2012": 49068.90143,
+    "2013": 49875.67509,
+    "2014": 50242.99751,
+    "2015": 50134.38376,
+    "2016": 50343.04445,
+    "2017": 51195.41911,
+    "2018": 52398.14326,
+    "2019": 52557.33527,
+    "2020": 50632.30945,
+    "2021": 53056.60772,
+    "2022": 53786.03891
+};
+
+
+// Initialize Chart.js with this data
+const ctx = document.getElementById('countryChart').getContext('2d');
+let countryChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(globalGHGData).slice(1), // Years
+        datasets: [{
+            label: `${globalGHGData.Country} GHG Emissions`,
+            data: Object.values(globalGHGData).slice(1), // GHG Emissions
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        },
+        responsive: true,
+        maintainAspectRatio: false  // This makes the chart responsive to container size
+    }
+});
+
+    // Function to update the chart
+    function updateChart(countryName, years, values) {
+        countryChart.data.labels = years;
+        countryChart.data.datasets[0].data = values;
+        countryChart.data.datasets[0].label = `${countryName} GHG Emissions`;
+        countryChart.update();
+    }
+</script>
+
+</body>
+</html>

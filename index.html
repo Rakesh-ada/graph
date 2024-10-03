@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive GHG Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        #info {
+            position: absolute;
+            bottom: 30px;
+            left: 50%; 
+            width: 700px;
+            height: auto;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="info">Click on a country to view GHG data.</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="geojson.js"></script>
+<script>
+    // Initialize the map
+    const map = L.map('map').setView([20, 0], 2);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+    }).addTo(map);
+
+    // Load GeoJSON data from the geojson.js file
+    L.geoJSON(geojsonData, {  // Assuming your geojson.js file exports a variable named `geojsonData`
+        onEachFeature: (feature, layer) => {
+            layer.on({
+                click: () => {
+                    // Get the country name (or other property)
+                    const countryName = feature.properties.name; // Adjust based on your GeoJSON structure
+                    
+                    // Fetch GHG data from your backend (replace with your API endpoint)
+                    fetch(`your_backend_api_endpoint?country=${countryName}`)
+                        .then(response => response.json())
+                        .then(ghgData => {
+                            // Display GHG data in the info box
+                            document.getElementById('info').innerHTML = `
+                                <strong>${countryName}</strong><br>
+                                GHG Data: ${ghgData.value} (example value)`;
+                        })
+                        .catch(error => {
+                            document.getElementById('info').innerHTML = `
+                                <strong>${countryName}</strong><br>
+                                Error fetching GHG data.`;
+                            console.error('Error fetching GHG data:', error);
+                        });
+                }
+            });
+        }
+    }).addTo(map);
+</script>
+
+</body>
+</html>

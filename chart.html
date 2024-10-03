@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHG Emissions by Country</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {font-family: Arial, sans-serif;}
+        #chart-container {width: 800px; height: 500px; margin: 50px auto;}
+        #country-selector {margin: 20px;}
+    </style>
+</head>
+<body>
+<h1>GHG Emissions by Country</h1>
+<div>
+    <label for="country-selector">Select Country:</label>
+    <select id="country-selector"></select>
+</div>
+<div id="chart-container">
+    <canvas id="countryChart"></canvas>
+</div>
+<script>
+async function loadChartData() {
+    const response = await fetch('data.json');
+    const jsonData = await response.json();
+    const countryData = jsonData.GHG_totals_by_country;
+    const countrySelector = document.getElementById('country-selector');
+
+    countryData.forEach(country => {
+        let option = document.createElement('option');
+        option.value = country["Country"];
+        option.text = country["Country"];
+        countrySelector.appendChild(option);
+    });
+
+    let initialCountry = countrySelector.value || countryData[0]["Country"];
+
+    function getCountryData(selectedCountry) {
+        let countryObj = countryData.find(c => c.Country === selectedCountry);
+        let years = [], values = [];
+        for (let key in countryObj) {
+            if (!isNaN(key)) {
+                years.push(key);
+                values.push(countryObj[key]);
+            }
+        }
+        return { years, values };
+    }
+
+    let { years, values } = getCountryData(initialCountry);
+    const ctx = document.getElementById('countryChart').getContext('2d');
+    let countryChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: years,
+            datasets: [{
+                label: `${initialCountry} GHG Emissions`,
+                data: values,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    function updateChart(selectedCountry) {
+        let { years, values } = getCountryData(selectedCountry);
+        countryChart.data.labels = years;
+        countryChart.data.datasets[0].data = values;
+        countryChart.data.datasets[0].label = `${selectedCountry} GHG Emissions`;
+        countryChart.update();
+    }
+
+    countrySelector.addEventListener('change', function () {
+        updateChart(this.value);
+    });
+
+    countrySelector.value = initialCountry;
+    updateChart(initialCountry);
+}
+
+loadChartData();
+</script>
+</body>
+</html>
